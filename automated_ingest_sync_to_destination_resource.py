@@ -1,5 +1,6 @@
 import irods_types
 import os
+from genquery import (row_iterator, AS_DICT, AS_LIST)
 
 # POLICY USE CASES
 # 0 - New data arrives in the scanned file system and is registered into the SCANNED_RESOURCE
@@ -74,14 +75,17 @@ def get_resource_name_by_replica_number(callback, logical_path, replica_number):
     data_name = logical_path.split('/')[-1]
     conditions = "COLL_NAME = '{0}' AND DATA_NAME = '{1}' AND DATA_REPL_NUM = '{2}'".format(coll_name, data_name, replica_number)
 
-    ret_val = callback.msiMakeGenQuery("RESC_NAME", conditions, irods_types.GenQueryInp())
-    genQueryInp = ret_val['arguments'][2]
+    ## -- subst. genquery iterator
+    #ret_val = callback.msiMakeGenQuery("RESC_NAME", conditions, irods_types.GenQueryInp())
+    #genQueryInp = ret_val['arguments'][2]
+    #ret_val = callback.msiExecGenQuery(genQueryInp, irods_types.GenQueryOut())
+    #genQueryOut = ret_val['arguments'][1]
+    #result_count = genQueryOut.rowCnt
 
-    ret_val = callback.msiExecGenQuery(genQueryInp, irods_types.GenQueryOut())
-    genQueryOut = ret_val['arguments'][1]
-    result_count = genQueryOut.rowCnt
+    query_results = list(row_iterator("RESC_NAME" , conditions, AS_DICT, callback))
+    result_count = len(query_results)
+    resource_name = str( query_results[0]["RESC_NAME"] ) if result_count > 0 else None
 
-    resource_name = str(genQueryOut.sqlResult[0].row(0)) if result_count > 0 else None
     return (result_count, resource_name)
 
 # Given a logical path and a resource name
@@ -92,14 +96,16 @@ def get_existing_replica_size_from_destination(callback, logical_path):
     resc_names = ','.join(["'"+i+"'" for i in LIST_OF_DESTINATION_RESOURCE_LEAVES])
     conditions = "COLL_NAME = '{0}' AND DATA_NAME = '{1}' AND RESC_NAME in ({2})".format(coll_name, data_name, resc_names)
 
-    ret_val = callback.msiMakeGenQuery("DATA_SIZE", conditions, irods_types.GenQueryInp())
-    genQueryInp = ret_val['arguments'][2]
+    #ret_val = callback.msiMakeGenQuery("DATA_SIZE", conditions, irods_types.GenQueryInp())
+    #genQueryInp = ret_val['arguments'][2]
+    #ret_val = callback.msiExecGenQuery(genQueryInp, irods_types.GenQueryOut())
+    #genQueryOut = ret_val['arguments'][1]
+    #previously_registered_replicas = genQueryOut.rowCnt
 
-    ret_val = callback.msiExecGenQuery(genQueryInp, irods_types.GenQueryOut())
-    genQueryOut = ret_val['arguments'][1]
-    previously_registered_replicas = genQueryOut.rowCnt
+    query_results = list(row_iterator( "DATA_SIZE", conditions, AS_DICT, callback))
+    previously_registered_replicas = len(query_results)
+    logical_size = int(query_results[0]["DATA_SIZE"]) if previously_registered_replicas > 0 else None
 
-    logical_size = int(genQueryOut.sqlResult[0].row(0)) if previously_registered_replicas > 0 else None
     return (previously_registered_replicas, logical_size)
 
 # Given a logical path and a list of resource names
@@ -110,14 +116,16 @@ def get_destination_resource_id(callback, logical_path):
     resc_names = ','.join(["'"+i+"'" for i in LIST_OF_DESTINATION_RESOURCE_LEAVES])
     conditions = "COLL_NAME = '{0}' AND DATA_NAME = '{1}' AND RESC_NAME in ({2})".format(coll_name, data_name, resc_names)
 
-    ret_val = callback.msiMakeGenQuery("DATA_RESC_ID", conditions, irods_types.GenQueryInp())
-    genQueryInp = ret_val['arguments'][2]
+    #ret_val = callback.msiMakeGenQuery("DATA_RESC_ID", conditions, irods_types.GenQueryInp())
+    #genQueryInp = ret_val['arguments'][2]
 
-    ret_val = callback.msiExecGenQuery(genQueryInp, irods_types.GenQueryOut())
-    genQueryOut = ret_val['arguments'][1]
-    previously_registered_replicas = genQueryOut.rowCnt
+    #ret_val = callback.msiExecGenQuery(genQueryInp, irods_types.GenQueryOut())
+    #genQueryOut = ret_val['arguments'][1]
+    #previously_registered_replicas = genQueryOut.rowCnt
 
-    resc_id = int(genQueryOut.sqlResult[0].row(0)) if genQueryOut.rowCnt > 0 else None
+    query_results = list(row_iterator( "DATA_RESC_ID", conditions, AS_DICT, callback))
+    previously_registered_replicas = len(query_results)
+    resc_id = int(query_results[0]["DATA_RESC_ID"]) if previously_registered_replicas > 0 else None
     return resc_id
 
 # set the replica status to either '1' or '0'
